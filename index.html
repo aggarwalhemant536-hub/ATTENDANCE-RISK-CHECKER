@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Risk Predictor | LPU Phagwara</title>
+    <!-- Google Fonts for clean typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js via CDN for attendance comparison graph -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <div class="brand-badge">LPU</div>
+                <div class="brand-text">
+                    <h1>Attendance Risk Predictor</h1>
+                    <p class="subtitle">Lovely Professional University, Phagwara • B.Tech CSE Attendance Manager</p>
+                </div>
+            </div>
+
+            <div class="header-controls">
+                <!-- Target Attendance Setting -->
+                <div class="setting-item" title="Minimum required attendance percentage (LPU norm is 75%)">
+                    <label for="requiredPercentInput">Required Target:</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="requiredPercentInput" min="50" max="99" value="75">
+                        <span>%</span>
+                    </div>
+                </div>
+
+                <!-- Dark Mode Toggle Button -->
+                <button id="themeToggleBtn" class="btn btn-secondary icon-btn" title="Toggle Dark/Light Mode">
+                    <span id="themeIcon">🌙</span> <span class="btn-text">Dark Mode</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+
+        <!-- Sample Data Notification Banner (visible when sample data is loaded) -->
+        <div id="sampleDataBanner" class="alert-banner">
+            <div class="alert-content">
+                <span>👋 <strong>Welcome to LPU Attendance Risk Predictor!</strong> We pre-filled 4 sample first-year subjects so you can test it immediately.</span>
+            </div>
+            <button id="clearSampleDataBtn" class="btn btn-sm btn-outline-danger">Clear Sample Data</button>
+        </div>
+
+        <!-- Dashboard Summary Stats Row -->
+        <section class="dashboard-section">
+            <div class="dashboard-grid">
+                <!-- Overall Attendance Card -->
+                <div class="stat-card" id="overallCard">
+                    <div class="stat-label">Overall Attendance</div>
+                    <div class="stat-value-group">
+                        <span class="stat-main-number" id="overallPercent">0.0%</span>
+                        <span class="badge" id="overallBadge">Safe</span>
+                    </div>
+                    <div class="stat-subtext" id="overallFraction">0 of 0 classes attended</div>
+                    <div class="stat-indicator" id="overallStatusMsg">Checking status...</div>
+                </div>
+
+                <!-- Danger Subjects Count Card -->
+                <div class="stat-card">
+                    <div class="stat-label">Subjects in Danger</div>
+                    <div class="stat-value-group">
+                        <span class="stat-main-number text-danger" id="dangerCount">0</span>
+                        <span class="badge badge-danger" id="dangerBadge">Below Target</span>
+                    </div>
+                    <div class="stat-subtext">Needs immediate attention to avoid debarment</div>
+                </div>
+
+                <!-- Total Subjects Count Card -->
+                <div class="stat-card">
+                    <div class="stat-label">Total Subjects</div>
+                    <div class="stat-value-group">
+                        <span class="stat-main-number" id="totalSubjectsCount">0</span>
+                        <span class="badge badge-neutral">Active</span>
+                    </div>
+                    <div class="stat-subtext">Registered courses in current term</div>
+                </div>
+
+                <!-- Overall Attendance Health Card -->
+                <div class="stat-card">
+                    <div class="stat-label">Safe Bunk Allowance</div>
+                    <div class="stat-value-group">
+                        <span class="stat-main-number text-safe" id="overallBunkAllowance">0</span>
+                        <span class="badge badge-safe">Total Buffer</span>
+                    </div>
+                    <div class="stat-subtext" id="bunkSummaryText">Cumulative safe skips across subjects</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Workspace: 2-Column Responsive Layout -->
+        <div class="content-layout">
+
+            <!-- Left / Primary Column: Subject Manager -->
+            <section class="subjects-section">
+                <div class="section-header">
+                    <div class="section-title-wrap">
+                        <h2>My Subjects</h2>
+                        <span class="section-subtitle">Track, mark daily attendance, and calculate risk</span>
+                    </div>
+                    
+                    <div class="section-actions">
+                        <!-- Duty Leave / Medical Leave Toggle -->
+                        <label class="toggle-control" title="Include Duty Leaves (DL) and Medical Leaves (ML) in attended count">
+                            <input type="checkbox" id="dutyLeaveToggle" checked>
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Count Duty/Medical Leaves</span>
+                        </label>
+
+                        <!-- Add Subject Button -->
+                        <button id="openAddSubjectBtn" class="btn btn-primary">
+                            <span>+ Add Subject</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Empty State Message (shown when 0 subjects exist) -->
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-icon">📚</div>
+                    <h3>No subjects added yet!</h3>
+                    <p>Add your first course (like CSE101 or MTH166) or restore sample data to see the predictor in action.</p>
+                    <div class="empty-actions">
+                        <button id="emptyAddBtn" class="btn btn-primary">+ Add New Subject</button>
+                        <button id="restoreSampleBtn" class="btn btn-secondary">Restore Sample Data</button>
+                    </div>
+                </div>
+
+                <!-- Subject Cards Grid -->
+                <div class="subject-cards-grid" id="subjectsGrid">
+                    <!-- Cards will be dynamically injected by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Right / Secondary Column: Future Predictor & Comparison Chart -->
+            <aside class="sidebar-section">
+
+                <!-- Feature 4: Future Attendance Predictor -->
+                <div class="card predictor-card">
+                    <div class="card-header">
+                        <h3>🔮 Future Risk Predictor</h3>
+                        <span class="badge badge-accent">Live "What-If"</span>
+                    </div>
+                    <p class="card-description">
+                        Plan your upcoming leaves! Enter remaining classes in the semester and adjust the bunk slider to see your predicted final attendance.
+                    </p>
+
+                    <form id="predictorForm" onsubmit="return false;">
+                        <!-- Select Subject for Prediction -->
+                        <div class="form-group">
+                            <label for="predictSubjectSelect">Select Subject:</label>
+                            <select id="predictSubjectSelect" class="form-control">
+                                <option value="overall">All Subjects (Overall Average)</option>
+                                <!-- Options populated by script.js -->
+                            </select>
+                        </div>
+
+                        <!-- Remaining Classes Input -->
+                        <div class="form-group">
+                            <label for="remainingClassesInput">Classes remaining in semester:</label>
+                            <input type="number" id="remainingClassesInput" class="form-control" min="1" max="100" value="20">
+                            <small class="form-help">Approximate scheduled lectures left before ETE</small>
+                        </div>
+
+                        <!-- Slider: Classes to Bunk -->
+                        <div class="form-group">
+                            <div class="slider-header">
+                                <label for="bunkSlider">Classes I plan to bunk:</label>
+                                <span class="slider-val" id="bunkValueDisplay">3 classes</span>
+                            </div>
+                            <input type="range" id="bunkSlider" min="0" max="20" value="3" class="range-slider">
+                            <div class="slider-ticks">
+                                <span>0 (Attend All)</span>
+                                <span id="maxSliderLabel">20 (Bunk All)</span>
+                            </div>
+                        </div>
+
+                        <!-- Prediction Outcome Box -->
+                        <div class="prediction-result-box" id="predictionResultBox">
+                            <div class="pred-header">
+                                <span class="pred-title">Predicted Final Attendance</span>
+                                <span class="badge" id="predRiskBadge">Safe</span>
+                            </div>
+                            <div class="pred-percentage" id="predFinalPercent">81.5%</div>
+                            <div class="pred-details" id="predDetailText">
+                                If you bunk 3 of 20 classes, you will finish safe above your 75% target.
+                            </div>
+                            <div class="pred-tip" id="predTipText">
+                                💡 Tip: You can safely bunk up to 4 more classes.
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Feature 5: Attendance Comparison Chart -->
+                <div class="card chart-card">
+                    <div class="card-header">
+                        <h3>📊 Subject Comparison Chart</h3>
+                        <span class="badge badge-neutral" id="chartTargetLabel">Target: 75%</span>
+                    </div>
+                    <p class="card-description">
+                        Green = Safe (80%+), Yellow = Warning (75-80%), Red = Danger (&lt;75%).
+                    </p>
+                    <div class="chart-wrapper">
+                        <canvas id="attendanceChart"></canvas>
+                        <div id="chartFallback" class="chart-fallback" style="display: none;">
+                            <p>Chart could not be loaded. Please ensure you have an active internet connection to load Chart.js from CDN.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Utility / Action Buttons -->
+                <div class="card utility-card">
+                    <div class="card-header">
+                        <h3>⚙️ Data & Reports</h3>
+                    </div>
+                    <div class="utility-buttons-grid">
+                        <button id="exportTxtBtn" class="btn btn-secondary btn-block" title="Download text report of your attendance">
+                            📄 Export Summary (.txt)
+                        </button>
+                        <button id="printViewBtn" class="btn btn-secondary btn-block" title="Open print preview / Save as PDF">
+                            🖨️ Print-Friendly View
+                        </button>
+                        <button id="resetAllDataBtn" class="btn btn-outline-danger btn-block" title="Erase all data and reset app">
+                            ⚠️ Reset All Data
+                        </button>
+                    </div>
+                </div>
+
+            </aside>
+        </div>
+
+        <!-- Project About & Educational Section (First-Year Student Portfolio vibe) -->
+        <section class="about-section card">
+            <div class="card-header">
+                <h3>📖 About Attendance Risk Predictor</h3>
+                <span class="badge badge-neutral">First-Year B.Tech CSE Project</span>
+            </div>
+            <div class="about-content">
+                <p>
+                    <strong>Why this project?</strong> At Lovely Professional University (LPU), maintaining at least 
+                    <strong>75% attendance</strong> is mandatory under the UMS academic guidelines to receive the End-Term Examination (ETE) 
+                    hall ticket and avoid debarment. Students frequently juggle continuous assessment (CA) tasks, lab practicals, sports, and technical fests, 
+                    making it tricky to know whether taking an upcoming leave will trigger a warning or debarment.
+                </p>
+                <p>
+                    This web application was built by a first-year Computer Science & Engineering student to solve this exact problem with 
+                    pure client-side web technologies. No backend or server is required; all your records are stored safely in your own browser.
+                </p>
+                <div class="concepts-box">
+                    <h4>🛠️ Core Programming Concepts Used in this Project:</h4>
+                    <ul class="concepts-list">
+                        <li><strong>Semantic HTML5:</strong> Clean document structuring with accessibility and responsiveness in mind.</li>
+                        <li><strong>CSS3 Modern Layouts:</strong> Responsive Flexbox, CSS Grid, custom color variables, and Dark/Light themes.</li>
+                        <li><strong>Vanilla JavaScript DOM Manipulation:</strong> Dynamic card creation, event listeners, and interactive UI states.</li>
+                        <li><strong>JavaScript Objects & Arrays:</strong> Modeling subjects as structured records and computing overall averages with loops.</li>
+                        <li><strong>Browser localStorage API:</strong> Persistent data storage so your attendance stays intact when you refresh or revisit.</li>
+                        <li><strong>Discrete Math & Edge-Case Handling:</strong> Formulas using <code>Math.floor()</code> and <code>Math.ceil()</code> to compute required attendance and allowable skips.</li>
+                        <li><strong>Chart.js CDN:</strong> Rendering dynamic bar graphs with custom threshold colors.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal for Adding / Editing a Subject -->
+    <div id="subjectModal" class="modal-backdrop" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add New Subject</h3>
+                <button type="button" class="close-modal-btn" id="closeModalBtn" aria-label="Close modal">&times;</button>
+            </div>
+            <form id="subjectForm">
+                <input type="hidden" id="editSubjectId">
+                
+                <div class="form-group">
+                    <label for="courseCodeInput">Course Code: <span class="required">*</span></label>
+                    <input type="text" id="courseCodeInput" class="form-control" placeholder="e.g. CSE121, MTH166, INT108" required maxlength="12">
+                    <small class="form-help">Course code as listed on your LPU UMS timetable</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="subjectNameInput">Subject Name: <span class="required">*</span></label>
+                    <input type="text" id="subjectNameInput" class="form-control" placeholder="e.g. Data Structures & Algorithms" required maxlength="60">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-half">
+                        <label for="totalClassesInput">Total Classes Held: <span class="required">*</span></label>
+                        <input type="number" id="totalClassesInput" class="form-control" min="0" max="250" placeholder="0" required>
+                    </div>
+
+                    <div class="form-group col-half">
+                        <label for="attendedClassesInput">Classes Attended: <span class="required">*</span></label>
+                        <input type="number" id="attendedClassesInput" class="form-control" min="0" max="250" placeholder="0" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="dutyLeavesInput">Duty Leaves / Medical Leaves (DL/ML):</label>
+                    <input type="number" id="dutyLeavesInput" class="form-control" min="0" max="50" placeholder="0" value="0">
+                    <small class="form-help">Approved University Duty Leaves (tech fest, cultural, sports) or verified Medical Leaves</small>
+                </div>
+
+                <!-- Validation Error Box -->
+                <div id="modalErrorMsg" class="form-error" style="display: none;"></div>
+
+                <div class="modal-footer">
+                    <button type="button" id="cancelModalBtn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" id="saveSubjectBtn" class="btn btn-primary">Save Subject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-container">
+            <p>Made with ❤️ by <strong>[Your Name]</strong>, B.Tech CSE (First Year), Lovely Professional University</p>
+            <p class="footer-subtext">Independent student project for academic planning • Not affiliated officially with LPU UMS</p>
+        </div>
+    </footer>
+
+    <!-- Print Only Header (renders only when printing/exporting PDF) -->
+    <div class="print-header" style="display: none;">
+        <h2>Lovely Professional University - Attendance Risk Report</h2>
+        <p id="printTimestamp"></p>
+    </div>
+
+    <!-- Main JavaScript Logic -->
+    <script src="script.js"></script>
+</body>
+</html>
